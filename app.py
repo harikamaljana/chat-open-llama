@@ -59,7 +59,7 @@ def main():
             # Show source if available
             if hasattr(response, 'source_nodes') and response.source_nodes:
                 source_text = response.source_nodes[0].node.text
-                with st.expander("📄 Source"):
+                with st.expander("Source"):
                     st.markdown(source_text)
         
         # Add assistant response to chat history with source

@@ -9,7 +9,6 @@ from llama_index.llms.openai import OpenAI
 load_dotenv()
 
 def setup_openai():
-    # Make sure you have set OPENAI_API_KEY in your environment variables
     if not os.getenv("OPENAI_API_KEY"):
         raise ValueError("Please set OPENAI_API_KEY environment variable")
 
@@ -48,13 +47,12 @@ def create_new_index(data_dir: str, storage_dir: str):
     return index
 
 def query_documents(index, query_text: str):
-    # Define custom query prompt
     CUSTOM_QUERY_TEMPLATE = (
     "You are a helpful assistant that answers questions based on the provided documents. "
     "Only answer questions that can be answered using the provided document content. "
     "Do not mention the documents in your response. "
     "If a question cannot be answered using the documents, politely explain that you can only "
-    "answer questions related my knowledge base.\n\n"
+    "answer questions related to my knowledge base.\n\n"
     "Context information is below:\n"
     "---------------------\n"
     "{context_str}\n"
@@ -86,26 +84,26 @@ def query_documents(index, query_text: str):
     except Exception as e:
         return "Cannot answer based on the available information."
 
-def main():
-    # Setup OpenAI credentials
-    setup_openai()
+# def main():
+#     # Setup OpenAI credentials
+#     setup_openai()
     
-    # Specify directories
-    data_dir = "data"
-    storage_dir = "storage"
+#     # Specify directories
+#     data_dir = "data"
+#     storage_dir = "storage"
     
-    # Create directories if they don't exist
-    Path(data_dir).mkdir(exist_ok=True)
+#     # Create directories if they don't exist
+#     Path(data_dir).mkdir(exist_ok=True)
     
-    # Load and index documents
-    index = load_and_index_documents(data_dir, storage_dir)
+#     # Load and index documents
+#     index = load_and_index_documents(data_dir, storage_dir)
     
-    # Example query
-    query = "What are the Partner Tools and Accelerators that can be utilized for RISE with SAP Engagements?"
-    response = query_documents(index, query)
+#     # Example query
+#     query = "What are the Partner Tools and Accelerators that can be utilized for RISE with SAP Engagements?"
+#     response = query_documents(index, query)
     
-    print(f"\nQuery: {query}")
-    print(f"Response: {response}")
+#     print(f"\nQuery: {query}")
+#     print(f"Response: {response}")
 
-if __name__ == "__main__":
-    main() 
+# if __name__ == "__main__":
+#     main() 
