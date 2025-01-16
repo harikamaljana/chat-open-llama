@@ -46,30 +46,70 @@ def create_new_index(data_dir: str, storage_dir: str):
     
     return index
 
-def query_documents(index, query_text: str):
+def query_documents(index, query_text: str, chat_history=None):
+    # Format chat history for context
+    chat_context = ""
+    if chat_history:
+        chat_context = "\n".join([
+            f"{'User' if msg['role'] == 'user' else 'Assistant'}: {msg['content']}"
+            for msg in chat_history
+        ])
+
+    # CUSTOM_QUERY_TEMPLATE = (
+    #     "You are a helpful assistant analyzing provided documents. "
+    #     "Answer questions based on the provided context and chat history. "
+    #     "If the context doesn't contain enough information, say 'I don't have enough information to answer that question.'\n"
+    #     "Be concise and specific. Cite relevant details when possible.\n\n"
+    #     "Previous conversation:\n"
+    #     "{chat_history}\n\n"
+    #     "Context from documents:\n"
+    #     "---------------------\n"
+    #     "{context_str}\n"
+    #     "---------------------\n"
+    #     "Question: {query_str}\n"
+    #     "Answer: "
+    # )
+
     CUSTOM_QUERY_TEMPLATE = (
-    "You are a helpful assistant that answers questions based on the provided documents. "
-    "Only answer questions that can be answered using the provided document content. "
-    "Do not mention the documents in your response. "
-    "If a question cannot be answered using the documents, politely explain that you can only "
-    "answer questions related to my knowledge base.\n\n"
-    "Context information is below:\n"
+    "You are an analytical assistant tasked with answering questions about provided documents. Follow these guidelines:\n\n"
+    "1. Base all responses on the provided context and chat history:\n"
+    "   - Support claims with direct quotes using '...' or specific references\n"
+    "   - Clearly indicate if information is ambiguous or incomplete\n"
+    "   - State 'I don't have enough information to answer that question' when context is insufficient\n"
+    "   - Note any uncertainties or limitations in your analysis\n\n"
+    "2. Structure your responses:\n"
+    "   - Be concise and precise\n"
+    "   - Lead with clear topic sentences\n"
+    "   - Format evidence consistently\n"
+    "   - Avoid speculation beyond provided information\n\n"
+    "3. When analyzing:\n"
+    "   - Consider temporal context and relationships\n"
+    "   - Note any contradictions or inconsistencies\n"
+    "   - Distinguish between explicit statements and implications\n"
+    "   - Identify connections between different parts of the context\n\n"
+    "Previous conversation:\n"
+    "{chat_history}\n\n"
+    "Context from documents:\n"
     "---------------------\n"
     "{context_str}\n"
     "---------------------\n"
-    "Given this context, please answer the question: {query_str}\n"
+    "Question: {query_str}\n"
+    "Answer: "
+)
+    
+    query_prompt = PromptTemplate(
+        CUSTOM_QUERY_TEMPLATE,
+        chat_history=chat_context
     )
     
-    query_prompt = PromptTemplate(CUSTOM_QUERY_TEMPLATE)
-    
-    # Create query engine with strict mode
+    # Create query engine with improved settings
     query_engine = index.as_query_engine(
-        similarity_top_k=1,
-        response_mode="compact",
+        similarity_top_k=3,
+        response_mode="tree_summarize",
         node_postprocessors=[],
-        context_window=2048,
+        context_window=3072,
         text_qa_template=query_prompt,
-        temperature=0.0
+        temperature=0.1
     )
     
     try:

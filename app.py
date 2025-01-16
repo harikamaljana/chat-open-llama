@@ -53,7 +53,14 @@ def main():
         
         # Generate assistant response using document_query backend
         with st.chat_message("assistant"):
-            response = query_documents(st.session_state.index, prompt)
+            # Get last few messages for context
+            chat_history = st.session_state.messages[-4:] if len(st.session_state.messages) > 0 else None
+            
+            response = query_documents(
+                st.session_state.index, 
+                prompt,
+                chat_history=chat_history
+            )
             st.markdown(response.response)
             
             # Show source if available
