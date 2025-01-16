@@ -8,8 +8,10 @@ from llama_index.llms.openai import OpenAI
 def setup_openai():
     if "OPENAI_API_KEY" not in st.secrets:
         raise ValueError("Please set OPENAI_API_KEY in .streamlit/secrets.toml")
-    # Set the API key for OpenAI
-    os.environ["OPENAI_API_KEY"] = st.secrets.OPENAI_API_KEY
+    
+    # Initialize OpenAI with API key from secrets
+    llm = OpenAI(api_key=st.secrets.OPENAI_API_KEY)
+    return llm
 
 def load_and_index_documents(data_dir: str, storage_dir: str):
     # Create storage directory if it doesn't exist
