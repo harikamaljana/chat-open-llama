@@ -47,6 +47,21 @@ def create_new_index(data_dir: str, storage_dir: str):
     return index
 
 def query_documents(index, query_text: str, chat_history=None):
+    # First, check if query is constitution-related
+    CONSTITUTION_KEYWORDS = [
+        'constitution', 'amendment', 'article', 'bill of rights', 'founding', 'federal',
+        'congress', 'president', 'supreme court', 'rights', 'powers', 'states',
+        'judicial', 'legislative', 'executive', 'ratif'
+    ]
+    
+    is_constitution_related = any(keyword in query_text.lower() for keyword in CONSTITUTION_KEYWORDS)
+    if not is_constitution_related:
+        return type('Response', (), {
+            'response': "I can only answer questions about the U.S. Constitution. Please ask a constitution-related question.",
+            'response_gen': (chunk for chunk in ["I can only answer questions about the U.S. Constitution. Please ask a constitution-related question."]),
+            'source_nodes': []
+        })
+
     # Format chat history for context
     chat_context = ""
     if chat_history:
@@ -55,53 +70,25 @@ def query_documents(index, query_text: str, chat_history=None):
             for msg in chat_history
         ])
 
-    # CUSTOM_QUERY_TEMPLATE = (
-    #     "You are a helpful assistant analyzing provided documents. "
-    #     "Answer questions based on the provided context and chat history. "
-    #     "If the context doesn't contain enough information, say 'I don't have enough information to answer that question.'\n"
-    #     "Be concise and specific. Cite relevant details when possible.\n\n"
-    #     "Previous conversation:\n"
-    #     "{chat_history}\n\n"
-    #     "Context from documents:\n"
-    #     "---------------------\n"
-    #     "{context_str}\n"
-    #     "---------------------\n"
-    #     "Question: {query_str}\n"
-    #     "Answer: "
-    # )
-
     CUSTOM_QUERY_TEMPLATE = (
-    "You are a constitutional expert specializing in the U.S. Constitution and its amendments. "
-    "Base your answers only on the provided context and follow these guidelines:\n"
-    "1. Direct Citations:\n"
-    "   - Always reference specific Articles, Sections, or Amendments\n"
-    "   - Quote relevant constitutional text when appropriate\n"
-    "   - Format citations consistently (e.g., 'Article I, Section 8' or 'First Amendment')\n"
-    "2. Structure your response:\n"
-    "   - Begin with the most relevant constitutional provision\n"
-    "   - Provide clear explanation of the text\n"
-    "   - Define any technical or legal terms\n"
-    "   - Add historical context only if directly relevant\n"
-    "3. Maintain objectivity:\n"
-    "   - Focus on the actual text of the Constitution\n"
-    "   - Avoid modern political interpretations\n"
-    "   - Acknowledge if something isn't directly addressed\n"
-    "4. When explaining amendments:\n"
-    "   - State the primary right or power established\n"
-    "   - Explain key provisions clearly\n"
-    "   - Note any modifications to earlier constitutional text\n"
-    "5. Quality checks:\n"
-    "   - Ensure accuracy with provided context\n"
-    "   - Use plain language while maintaining precision\n"
-    "   - Acknowledge any limitations in the source material\n\n"
-    "Previous conversation:\n{chat_history}\n\n"
-    "Context from documents:\n"
-    "---------------------\n"
-    "{context_str}\n"
-    "---------------------\n"
-    "Question: {query_str}\n"
-    "Answer: "
-)
+        "You are a Constitution-only assistant. You must REFUSE to answer ANY question not directly "
+        "about the U.S. Constitution and its amendments.\n\n"
+        "STRICT RULES:\n"
+        "1. ONLY answer questions explicitly about the U.S. Constitution\n"
+        "2. If a question is not about the Constitution, respond EXACTLY with:\n"
+        "   'I can only answer questions about the U.S. Constitution. Please ask a constitution-related question.'\n"
+        "3. Use ONLY information from the provided context\n"
+        "4. If the constitutional information isn't in the context, respond EXACTLY with:\n"
+        "   'I apologize, but I don't have enough information in my knowledge base to answer this constitutional question.'\n"
+        "5. NEVER use external knowledge or make assumptions\n\n"
+        "Previous conversation:\n{chat_history}\n\n"
+        "Context from documents:\n"
+        "---------------------\n"
+        "{context_str}\n"
+        "---------------------\n"
+        "Question: {query_str}\n"
+        "Answer: "
+    )
     query_prompt = PromptTemplate(
         CUSTOM_QUERY_TEMPLATE,
         chat_history=chat_context
