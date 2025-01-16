@@ -54,31 +54,74 @@ def query_documents(index, query_text: str, chat_history=None):
             f"{'User' if msg['role'] == 'user' else 'Assistant'}: {msg['content']}"
             for msg in chat_history
         ])
+
+    # CUSTOM_QUERY_TEMPLATE = (
+    #     "You are a helpful assistant analyzing provided documents. "
+    #     "Answer questions based on the provided context and chat history. "
+    #     "If the context doesn't contain enough information, say 'I don't have enough information to answer that question.'\n"
+    #     "Be concise and specific. Cite relevant details when possible.\n\n"
+    #     "Previous conversation:\n"
+    #     "{chat_history}\n\n"
+    #     "Context from documents:\n"
+    #     "---------------------\n"
+    #     "{context_str}\n"
+    #     "---------------------\n"
+    #     "Question: {query_str}\n"
+    #     "Answer: "
+    # )
+
+    CUSTOM_QUERY_TEMPLATE = (
+    "You are a constitutional expert specializing in the U.S. Constitution and its amendments. "
+    "Base your answers only on the provided context and follow these guidelines:\n"
+    "1. Direct Citations:\n"
+    "   - Always reference specific Articles, Sections, or Amendments\n"
+    "   - Quote relevant constitutional text when appropriate\n"
+    "   - Format citations consistently (e.g., 'Article I, Section 8' or 'First Amendment')\n"
+    "2. Structure your response:\n"
+    "   - Begin with the most relevant constitutional provision\n"
+    "   - Provide clear explanation of the text\n"
+    "   - Define any technical or legal terms\n"
+    "   - Add historical context only if directly relevant\n"
+    "3. Maintain objectivity:\n"
+    "   - Focus on the actual text of the Constitution\n"
+    "   - Avoid modern political interpretations\n"
+    "   - Acknowledge if something isn't directly addressed\n"
+    "4. When explaining amendments:\n"
+    "   - State the primary right or power established\n"
+    "   - Explain key provisions clearly\n"
+    "   - Note any modifications to earlier constitutional text\n"
+    "5. Quality checks:\n"
+    "   - Ensure accuracy with provided context\n"
+    "   - Use plain language while maintaining precision\n"
+    "   - Acknowledge any limitations in the source material\n\n"
+    "Previous conversation:\n{chat_history}\n\n"
+    "Context from documents:\n"
+    "---------------------\n"
+    "{context_str}\n"
+    "---------------------\n"
+    "Question: {query_str}\n"
+    "Answer: "
+)
+    query_prompt = PromptTemplate(
+        CUSTOM_QUERY_TEMPLATE,
+        chat_history=chat_context
+    )
     
-    # Create query engine with optimized settings
+    # Create query engine with streaming enabled
     query_engine = index.as_query_engine(
-        similarity_top_k=5,  # Increased from 3 to get more context
+        similarity_top_k=3,
         response_mode="tree_summarize",
         node_postprocessors=[],
-        context_window=4096,  # Increased context window
+        context_window=3072,
         text_qa_template=query_prompt,
-        temperature=0.7,  # Increased temperature for more creative responses
-        streaming=True,
-        verbose=True  # Add this to see more details about the query process
+        temperature=0.1,
+        streaming=True  # Enable streaming
     )
     
     try:
-        # Add system message to guide response format
-        query_text_with_instruction = (
-            "Please provide a detailed answer with examples and evidence from the documents. "
-            "Break down complex information into clear sections. "
-            "QUERY: " + query_text
-        )
-        
-        response = query_engine.query(query_text_with_instruction)
+        response = query_engine.query(query_text)
         return response
     except Exception as e:
-        print(f"Query error: {e}")  # Add error logging
         return "Cannot answer based on the available information."
 
 # def main():
