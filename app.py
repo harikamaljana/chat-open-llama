@@ -4,11 +4,17 @@ from pathlib import Path
 
 # Initialize session state for chat history
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = [
+        {
+            "role": "assistant",
+            "content": """👋 Welcome to Constitution Chat! 
+            How can I help you learn about the Constitution today?"""
+        }
+    ]
 
 # Initialize session state for document index
 if "index" not in st.session_state:
-    st.set_page_config(page_title="Document Chat", layout="wide")
+    st.set_page_config(page_title="Constitution Chat", layout="wide")
     setup_openai()
     
     # Specify directories
@@ -30,7 +36,7 @@ def main():
     with header:
         col1, col2 = st.columns([4, 1])
         with col1:
-            st.title("Document Chat")
+            st.title("Constitution Chat")
         with col2:
             st.button("Clear Chat", on_click=clear_chat, type="primary")
     
@@ -43,7 +49,7 @@ def main():
                     st.markdown(message["source"])
     
     # Accept user input
-    if prompt := st.chat_input("Ask a question about your documents"):
+    if prompt := st.chat_input("Ask a question about the constitution"):
         # Display user message
         with st.chat_message("user"):
             st.markdown(prompt)
@@ -53,15 +59,27 @@ def main():
         
         # Generate assistant response using document_query backend
         with st.chat_message("assistant"):
-            # Get last few messages for context
             chat_history = st.session_state.messages[-4:] if len(st.session_state.messages) > 0 else None
             
+            # Create empty placeholder for streaming response
+            response_placeholder = st.empty()
+            full_response = ""
+            
+            # Get streaming response
             response = query_documents(
                 st.session_state.index, 
                 prompt,
                 chat_history=chat_history
             )
-            st.markdown(response.response)
+            
+            # Stream the response
+            for chunk in response.response_gen:
+                if chunk:
+                    full_response += chunk
+                    response_placeholder.markdown(full_response + "▌")
+            
+            # Display final response without cursor
+            response_placeholder.markdown(full_response)
             
             # Show source if available
             if hasattr(response, 'source_nodes') and response.source_nodes:
@@ -73,7 +91,7 @@ def main():
         source = response.source_nodes[0].node.text if hasattr(response, 'source_nodes') and response.source_nodes else None
         st.session_state.messages.append({
             "role": "assistant", 
-            "content": response.response,
+            "content": full_response,
             "source": source
         })
 

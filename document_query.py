@@ -1,23 +1,21 @@
 import os
 from pathlib import Path
-from dotenv import load_dotenv
+import streamlit as st
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext, load_index_from_storage
 from llama_index.core.prompts import PromptTemplate
 from llama_index.llms.openai import OpenAI
 
-# Load environment variables from .env file
-load_dotenv()
-
 def setup_openai():
-    if not os.getenv("OPENAI_API_KEY"):
-        raise ValueError("Please set OPENAI_API_KEY environment variable")
+    if "OPENAI_API_KEY" not in st.secrets:
+        raise ValueError("Please set OPENAI_API_KEY in .streamlit/secrets.toml")
+    # Set the API key for OpenAI
+    os.environ["OPENAI_API_KEY"] = st.secrets.OPENAI_API_KEY
 
 def load_and_index_documents(data_dir: str, storage_dir: str):
     # Create storage directory if it doesn't exist
     Path(storage_dir).mkdir(exist_ok=True)
     
     storage_path = Path(storage_dir) / "docstore.json"
-    
     # Check if we have an existing index
     if storage_path.exists():
         try:
@@ -71,22 +69,37 @@ def query_documents(index, query_text: str, chat_history=None):
     # )
 
     CUSTOM_QUERY_TEMPLATE = (
-    "You are an analytical assistant tasked with answering questions about provided documents. Follow these guidelines:\n\n"
-    "1. Base all responses on the provided context and chat history:\n"
-    "   - Support claims with direct quotes using '...' or specific references\n"
-    "   - Clearly indicate if information is ambiguous or incomplete\n"
+    "You are an analytical assistant tasked with answering questions about provided documents. Follow these specific guidelines:\n\n"
+    "1. Evidence and Analysis:\n"
+    "   - Support every major claim with direct quotes using '...'\n"
+    "   - Cite specific page numbers, sections, or timestamps when available\n"
+    "   - When analyzing numerical data, show key calculations\n"
+    "   - Distinguish between primary sources and interpretations\n"
+    "   - Cross-reference information across multiple documents when relevant\n\n"
+    "2. Information Handling:\n"
     "   - State 'I don't have enough information to answer that question' when context is insufficient\n"
-    "   - Note any uncertainties or limitations in your analysis\n\n"
-    "2. Structure your responses:\n"
-    "   - Be concise and precise\n"
-    "   - Lead with clear topic sentences\n"
-    "   - Format evidence consistently\n"
-    "   - Avoid speculation beyond provided information\n\n"
-    "3. When analyzing:\n"
-    "   - Consider temporal context and relationships\n"
-    "   - Note any contradictions or inconsistencies\n"
-    "   - Distinguish between explicit statements and implications\n"
-    "   - Identify connections between different parts of the context\n\n"
+    "   - For partial information, clearly indicate what is known and unknown\n"
+    "   - Flag any inconsistencies or contradictions between sources\n"
+    "   - Note the age or timestamp of information when relevant\n"
+    "   - Highlight any potential biases or limitations in the source material\n\n"
+    "3. Response Structure:\n"
+    "   - Begin with a direct answer to the question\n"
+    "   - Use clear topic sentences for each new point\n"
+    "   - Present information in chronological or logical order\n"
+    "   - Break down complex answers into digestible paragraphs\n"
+    "   - End with a concise summary for complex answers\n\n"
+    "4. Analytical Approach:\n"
+    "   - Consider cause-and-effect relationships\n"
+    "   - Identify patterns and trends in the data\n"
+    "   - Compare and contrast different viewpoints or data points\n"
+    "   - Evaluate the strength of evidence for each conclusion\n"
+    "   - Note any gaps in logic or missing information\n\n"
+    "5. Special Cases:\n"
+    "   - For technical content: define specialized terms\n"
+    "   - For numerical data: include units and context\n"
+    "   - For historical information: note relevant timeframes\n"
+    "   - For processes: list steps in sequential order\n"
+    "   - For recommendations: clearly state assumptions\n\n"
     "Previous conversation:\n"
     "{chat_history}\n\n"
     "Context from documents:\n"
@@ -102,24 +115,19 @@ def query_documents(index, query_text: str, chat_history=None):
         chat_history=chat_context
     )
     
-    # Create query engine with improved settings
+    # Create query engine with streaming enabled
     query_engine = index.as_query_engine(
         similarity_top_k=3,
         response_mode="tree_summarize",
         node_postprocessors=[],
         context_window=3072,
         text_qa_template=query_prompt,
-        temperature=0.1
+        temperature=0.1,
+        streaming=True  # Enable streaming
     )
     
     try:
         response = query_engine.query(query_text)
-        
-        if (not response.response or 
-            response.response.strip() == "" or 
-            len(response.source_nodes) == 0):
-            return "Cannot answer based on the available information."
-            
         return response
     except Exception as e:
         return "Cannot answer based on the available information."
