@@ -54,100 +54,31 @@ def query_documents(index, query_text: str, chat_history=None):
             f"{'User' if msg['role'] == 'user' else 'Assistant'}: {msg['content']}"
             for msg in chat_history
         ])
-
-    # CUSTOM_QUERY_TEMPLATE = (
-    #     "You are a helpful assistant analyzing provided documents. "
-    #     "Answer questions based on the provided context and chat history. "
-    #     "If the context doesn't contain enough information, say 'I don't have enough information to answer that question.'\n"
-    #     "Be concise and specific. Cite relevant details when possible.\n\n"
-    #     "Previous conversation:\n"
-    #     "{chat_history}\n\n"
-    #     "Context from documents:\n"
-    #     "---------------------\n"
-    #     "{context_str}\n"
-    #     "---------------------\n"
-    #     "Question: {query_str}\n"
-    #     "Answer: "
-    # )
-
-    CUSTOM_QUERY_TEMPLATE = (
-   "You are an expert analytical assistant specializing in document analysis. Provide clear, structured responses with bulleted lists for clarity when appropriate.\n\n"
-   "1. Response Structure:\n"
-   "   • Start with a brief executive summary (2-3 sentences)\n"
-   "   • Break down complex answers into clearly marked sections\n"
-   "   • Use bullet points for:\n"
-   "     - Lists of features, characteristics, or components\n" 
-   "     - Step-by-step processes or sequences\n"
-   "     - Key findings or takeaways\n"
-   "     - Supporting evidence or examples\n"
-   "   • Each bullet point should be 1-2 sentences, focused on a single idea\n"
-   "   • Use sub-bullets for related details\n\n"
-   "2. Evidence and Analysis:\n"
-   "   • Back claims with direct quotes using '...'\n"
-   "   • Format evidence consistently:\n"
-   "     - Quote: '...'\n"
-   "     - Source: [document/page/section]\n"
-   "     - Analysis: Brief explanation of significance\n"
-   "   • For numerical data:\n"
-   "     - Present key statistics clearly\n"
-   "     - Note trends and patterns\n"
-   "     - Include relevant comparisons\n\n"
-   "3. Insufficient Information Protocol:\n"
-   "   • State clearly: 'I don't have enough information to answer that question'\n"
-   "   • Specify what information is:\n"
-   "     - Available\n"
-   "     - Missing\n"
-   "     - Unclear or ambiguous\n\n"
-   "4. Special Content Handling:\n"
-   "   • Technical Content:\n"
-   "     - Define key terms\n"
-   "     - Break down complex concepts\n"
-   "     - List prerequisites if applicable\n"
-   "   • Data Analysis:\n"
-   "     - List key metrics\n"
-   "     - Show important trends\n"
-   "     - Note significant findings\n"
-   "   • Processes:\n"
-   "     - List steps sequentially\n"
-   "     - Note dependencies\n"
-   "     - Highlight critical steps\n\n"
-   "5. Quality Checks:\n"
-   "   • Ensure all main points are supported by evidence\n"
-   "   • Verify logical flow of information\n"
-   "   • Check that bullet points are:\n"
-   "     - Concise\n"
-   "     - Relevant\n"
-   "     - Well-organized\n\n"
-   "Previous conversation:\n"
-   "{chat_history}\n\n"
-   "Context from documents:\n"
-   "---------------------\n"
-   "{context_str}\n"
-   "---------------------\n"
-   "Question: {query_str}\n"
-   "Answer: "
-)
     
-    query_prompt = PromptTemplate(
-        CUSTOM_QUERY_TEMPLATE,
-        chat_history=chat_context
-    )
-    
-    # Create query engine with streaming enabled
+    # Create query engine with optimized settings
     query_engine = index.as_query_engine(
-        similarity_top_k=3,
+        similarity_top_k=5,  # Increased from 3 to get more context
         response_mode="tree_summarize",
         node_postprocessors=[],
-        context_window=3072,
+        context_window=4096,  # Increased context window
         text_qa_template=query_prompt,
-        temperature=0.1,
-        streaming=True  # Enable streaming
+        temperature=0.7,  # Increased temperature for more creative responses
+        streaming=True,
+        verbose=True  # Add this to see more details about the query process
     )
     
     try:
-        response = query_engine.query(query_text)
+        # Add system message to guide response format
+        query_text_with_instruction = (
+            "Please provide a detailed answer with examples and evidence from the documents. "
+            "Break down complex information into clear sections. "
+            "QUERY: " + query_text
+        )
+        
+        response = query_engine.query(query_text_with_instruction)
         return response
     except Exception as e:
+        print(f"Query error: {e}")  # Add error logging
         return "Cannot answer based on the available information."
 
 # def main():
